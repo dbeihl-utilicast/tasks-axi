@@ -749,11 +749,13 @@ export async function mvCommand(
   }
 
   if (store instanceof MarkdownStore) {
-    await store.moveManyTo(ids, target, {
-      ...(prepare !== undefined
-        ? { prepare: () => runPrepareCommand(prepare, prepareTimeoutMs) }
-        : {}),
-    });
+    await store.moveManyTo(
+      ids,
+      target,
+      prepare === undefined
+        ? {}
+        : { prepare: () => runPrepareCommand(prepare, prepareTimeoutMs) },
+    );
   } else if (ids.length === 1) {
     await target.create(taskToInput(tasks[0]));
     await store.remove(ids[0]);
