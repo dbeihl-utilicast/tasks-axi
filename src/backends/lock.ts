@@ -20,7 +20,7 @@ import { AxiError } from "../errors.js";
  * the whole new file, never a torn write.
  */
 
-const LOCK_STALE_MS = 30_000;
+export const LOCK_STALE_MS = 30_000;
 const LOCK_TIMEOUT_MS = 2_500;
 const LOCK_RETRY_MS = 25;
 let lockTokenCounter = 0;
