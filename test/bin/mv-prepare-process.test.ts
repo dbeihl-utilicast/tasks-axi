@@ -142,14 +142,14 @@ describe.skipIf(process.platform === "win32")(
       const child = spawn(
         process.execPath,
         mvArgs(source, target, prepareCommand(log, "sleep", "20000")),
-        { cwd: REPO_ROOT },
+        { cwd: REPO_ROOT, stdio: "ignore" },
       );
-      const result = finished(child);
+      const exited = new Promise((resolve) => child.on("exit", resolve));
       await waitFor(() => invocations(log).length === 1);
       orphans.push(invocations(log)[0]);
 
       child.kill("SIGKILL");
-      await result;
+      await exited;
 
       expect(source.read()).toBe(SOURCE);
       expect(target.read()).toBe(TARGET);
