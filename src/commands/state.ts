@@ -36,7 +36,7 @@ import {
   PUBLIC_FOLLOWUP_KIND,
   clonePublicFollowup,
 } from "../public-followup.js";
-import { parsePrepareTimeout, runPrepareCommand } from "../prepare.js";
+import { PREPARE_TIMEOUT_MS, runPrepareCommand } from "../prepare.js";
 import type { Store } from "../store.js";
 import { getSuggestions } from "../suggestions.js";
 import { renderHelp, renderOutput } from "../toon.js";
@@ -111,8 +111,7 @@ file - include the whole set, or move the missing endpoint there first.
 flags:
   --prepare <command>   run a shell command once the move is validated and before it is
                         written, with both backlogs locked; the move commits only if the
-                        command exits 0 and neither file changed meanwhile
-  --prepare-timeout-ms <n>   kill the command after n ms (default 10000, max 25000)
+                        command exits 0 within 10 s and neither file changed meanwhile
   --json   print the result as a JSON object
 examples:
   tasks-axi mv hibit-cert-cleanup --to ../homemux/data/backlog.md
@@ -700,7 +699,6 @@ export async function mvCommand(
     "--prepare",
     takeFlag(args, "--prepare"),
   );
-  const prepareTimeout = takeFlag(args, "--prepare-timeout-ms");
   requireNoUnknownFlags(args);
   const positionals = args.filter((arg) => !arg.startsWith("-"));
   if (positionals.length === 0) {
@@ -708,13 +706,6 @@ export async function mvCommand(
       MV_HELP.split("\n")[0],
     ]);
   }
-  if (prepare === undefined && prepareTimeout !== undefined) {
-    throw new AxiError(
-      "--prepare-timeout-ms requires --prepare",
-      "VALIDATION_ERROR",
-    );
-  }
-  const prepareTimeoutMs = parsePrepareTimeout(prepareTimeout);
   if (prepare !== undefined && !(store instanceof MarkdownStore)) {
     throw new AxiError(
       "--prepare requires the markdown backend",
@@ -754,7 +745,7 @@ export async function mvCommand(
       target,
       prepare === undefined
         ? {}
-        : { prepare: () => runPrepareCommand(prepare, prepareTimeoutMs) },
+        : { prepare: () => runPrepareCommand(prepare, PREPARE_TIMEOUT_MS) },
     );
   } else if (ids.length === 1) {
     await target.create(taskToInput(tasks[0]));

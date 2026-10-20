@@ -1,27 +1,8 @@
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
-import { parseOptionalNonNegativeIntegerFlag } from "./args.js";
-import { LOCK_STALE_MS } from "./backends/lock.js";
 import { AxiError } from "./errors.js";
 
-export const DEFAULT_PREPARE_TIMEOUT_MS = 10_000;
-/** Stays under the lock stale threshold so a healthy prepare never makes the held locks look abandoned. */
-export const MAX_PREPARE_TIMEOUT_MS = LOCK_STALE_MS - 5_000;
-
-export function parsePrepareTimeout(raw: string | undefined): number {
-  const flag = "--prepare-timeout-ms";
-  const ms = parseOptionalNonNegativeIntegerFlag(flag, raw);
-  if (ms === undefined) return DEFAULT_PREPARE_TIMEOUT_MS;
-  if (ms < 1) {
-    throw new AxiError(`${flag} must be at least 1`, "VALIDATION_ERROR");
-  }
-  if (ms > MAX_PREPARE_TIMEOUT_MS) {
-    throw new AxiError(
-      `${flag} must be at most ${MAX_PREPARE_TIMEOUT_MS}`,
-      "VALIDATION_ERROR",
-    );
-  }
-  return ms;
-}
+/** Stays under the 30 s lock stale threshold so a healthy prepare never makes the held locks look abandoned. */
+export const PREPARE_TIMEOUT_MS = 10_000;
 
 function prepareFailed(reason: string): AxiError {
   return new AxiError(

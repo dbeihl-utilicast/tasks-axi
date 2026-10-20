@@ -208,7 +208,7 @@ Moved tasks are re-rendered canonically, so their multi-paragraph bodies remain 
 `mv --prepare <command>` runs a shell command after the move is fully validated and before anything is written, while both backlogs stay locked.
 A move that would strand a dependency never runs the command, and no other tasks-axi command can change either backlog until the move commits or is abandoned.
 The move commits only if the command exits 0 and neither file was hand-edited meanwhile; otherwise nothing is moved (`PREPARE_FAILED` or `CONFLICT`).
-`--prepare-timeout-ms <n>` (default 10000, at most 25000) kills a command that runs too long, and SIGINT or SIGTERM stops it the same way.
+A command still running after 10 seconds is killed, and SIGINT or SIGTERM stops it the same way.
 Re-running an abandoned `mv` runs the command again, so make it safe to repeat; re-running a move that already committed reports the task as not found and does not run the command.
 The command's output goes to stderr, it must not run tasks-axi against either locked backlog, and it is not undone if the move later fails to write.
 If tasks-axi is killed outright, nothing is moved, but the lock files stay until removed and the command may keep running.

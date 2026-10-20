@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { addCommand } from "../../src/commands/crud.js";
 import { MV_HELP, mvCommand } from "../../src/commands/state.js";
+import { runPrepareCommand } from "../../src/prepare.js";
 import type { Store } from "../../src/store.js";
 import { type TempBacklog, makeBacklog } from "../helpers.js";
 
@@ -233,32 +234,17 @@ describe("mv --prepare", () => {
     expect(target.read()).toContain("bystander-c");
   });
 
-  it("kills a prepare command that outlives --prepare-timeout-ms and moves nothing", async () => {
-    const source = backlog(LINKED);
-    const target = backlog(EMPTY);
+  it("kills a prepare command that outlives its timeout", async () => {
+    const source = backlog(EMPTY);
     const log = logOf(source);
 
     await expect(
-      mvCommand(
-        [
-          "bystander-c",
-          "--to",
-          target.path,
-          "--prepare",
-          prepareCommand(log, "sleep", "20000"),
-          "--prepare-timeout-ms",
-          "300",
-        ],
-        source.ctx,
-      ),
+      runPrepareCommand(prepareCommand(log, "sleep", "20000"), 300),
     ).rejects.toMatchObject({
       code: "PREPARE_FAILED",
       message: expect.stringContaining("timed out after 300 ms"),
     });
 
-    expect(source.read()).toBe(LINKED);
-    expect(target.read()).toBe(EMPTY);
-    expect(existsSync(`${source.path}.lock`)).toBe(false);
     if (process.platform !== "win32") {
       const pid = Number(invocations(log)[0].split(" ")[1]);
       await waitFor(() => !isAlive(pid));
@@ -380,52 +366,6 @@ describe("mv --prepare", () => {
     expect(invocations(log)).toHaveLength(1);
   });
 
-  it.each([
-    ["0", "at least 1"],
-    ["abc", "non-negative integer"],
-    ["60000", "at most 25000"],
-  ])("rejects --prepare-timeout-ms %s", async (value, expected) => {
-    const source = backlog(LINKED);
-    const target = backlog(EMPTY);
-    const log = logOf(source);
-
-    await expect(
-      mvCommand(
-        [
-          "bystander-c",
-          "--to",
-          target.path,
-          "--prepare",
-          prepareCommand(log, "ok"),
-          "--prepare-timeout-ms",
-          value,
-        ],
-        source.ctx,
-      ),
-    ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
-      message: expect.stringContaining(expected),
-    });
-    expect(existsSync(log)).toBe(false);
-  });
-
-  it("requires --prepare for --prepare-timeout-ms", async () => {
-    const source = backlog(LINKED);
-    const target = backlog(EMPTY);
-
-    await expect(
-      mvCommand(
-        ["bystander-c", "--to", target.path, "--prepare-timeout-ms", "500"],
-        source.ctx,
-      ),
-    ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
-      message: expect.stringContaining(
-        "--prepare-timeout-ms requires --prepare",
-      ),
-    });
-  });
-
   it("refuses --prepare on a backend that cannot hold the move locks, without preparing", async () => {
     const source = backlog(LINKED);
     const target = backlog(EMPTY);
@@ -464,6 +404,5 @@ describe("mv --prepare", () => {
 
   it("documents the prepare contract in mv help", () => {
     expect(MV_HELP).toContain("--prepare <command>");
-    expect(MV_HELP).toContain("--prepare-timeout-ms");
   });
 });
